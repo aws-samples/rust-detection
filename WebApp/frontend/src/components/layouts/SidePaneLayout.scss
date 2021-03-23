@@ -1,0 +1,24 @@
+.layout--sidepane {
+  /*
+      If the height of the content is small, the footer will be pulled up.
+      To ensure that the footer is always at the bottom of the page, we'll let the layout grow to fill
+      all the space.
+  */
+  flex-grow: 1;
+
+  display: flex;
+
+  .sidepane {
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    padding: 1rem;
+  }
+
+  .mainpane {
+    flex-grow: 1;
+    flex-shrink: 1;
+
+    padding: 1rem;
+  }
+}

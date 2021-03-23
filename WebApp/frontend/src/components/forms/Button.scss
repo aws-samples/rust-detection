@@ -1,0 +1,27 @@
+@import '../../custom-bootstrap/scss/custom.scss';
+
+.spd-button.btn-primary {
+  color: $white;
+  background-color: $primary;
+  border-color: $primary;
+
+  &:hover {
+    background-color: $primary-hover;
+    border-color: $primary-hover;
+  }
+}
+
+.spd-button.btn-secondary {
+  color: #000;
+  background-color: $secondary;
+  border-color: $secondary;
+
+  &:hover {
+    background-color: $secondary-hover;
+    border-color: $secondary-hover;
+  }
+}
+
+.spd-button.btn-link {
+  color: $link-color;
+}

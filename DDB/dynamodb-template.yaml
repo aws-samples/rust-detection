@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Corrosion Detection - Creates DynamoDB Tables and GSIs
+Resources:
+  ImageBatchInfo:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: "ImageBatchInfo"
+      AttributeDefinitions:
+        -
+          AttributeName: "BatchId"
+          AttributeType: "S"
+        -
+          AttributeName: "CreationTime"
+          AttributeType: "N"
+        -
+          AttributeName: "Status"
+          AttributeType: "S"
+      KeySchema:
+        -
+          AttributeName: "BatchId"
+          KeyType: "HASH"
+        -
+          AttributeName: "CreationTime"
+          KeyType: "RANGE"
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "GSI-ImageBatchInfo"
+          KeySchema:
+            -
+              AttributeName: "Status"
+              KeyType: "HASH"
+            -
+              AttributeName: "CreationTime"
+              KeyType: "RANGE"
+
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: 5
+            WriteCapacityUnits: 5
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+  
+  ImageBatchDetailsInfo:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: "ImageBatchDetailsInfo"
+      AttributeDefinitions:
+        -
+          AttributeName: "BatchId"
+          AttributeType: "S"
+        -
+          AttributeName: "Id"
+          AttributeType: "S"
+        
+      KeySchema:
+        -
+          AttributeName: "BatchId"
+          KeyType: "HASH"
+        -
+          AttributeName: "Id"
+          KeyType: "RANGE"
+      
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+  
+
+  ImageTrainingBatchInfo:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: "ImageTrainingBatchInfo"
+      AttributeDefinitions:
+        -
+          AttributeName: "IdStatus"
+          AttributeType: "S"
+        -
+          AttributeName: "CreationTime"
+          AttributeType: "N"
+        -
+          AttributeName: "Id"
+          AttributeType: "S"
+      KeySchema:
+        -
+          AttributeName: "Id"
+          KeyType: "HASH"
+        
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "GSI-ImageTrainingBatchInfo"
+          KeySchema:
+            -
+              AttributeName: "IdStatus"
+              KeyType: "HASH"
+            -
+              AttributeName: "CreationTime"
+              KeyType: "RANGE"
+
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: 5
+            WriteCapacityUnits: 5
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5

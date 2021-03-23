@@ -1,0 +1,27 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      # Install dependencies needed for running tests
+      - npm cache clean -f
+      - npm install -g n
+      - n stable
+      - rm -rf node_modules
+      - npm install
+
+      # Upgrade AWS CLI to the latest version
+      - pip install --upgrade awscli
+  pre_build:
+    commands:
+      - userpool=`aws cloudformation describe-stacks --stack-name $PROJECT-main  --query 'Stacks[0].Outputs[?OutputKey==\`UserPool\`].OutputValue' --output text` && sed -i -e "s/\${cognito-user-pool-id}/$userpool/g" src/config.js.template
+      - identitypool=`aws cloudformation describe-stacks --stack-name $PROJECT-main  --query 'Stacks[0].Outputs[?OutputKey==\`IdentityPool\`].OutputValue' --output text` && sed -i -e "s/\${cognito-identity-pool-id}/$identitypool/g" src/config.js.template
+      - userclientid=`aws cloudformation describe-stacks --stack-name $PROJECT-main  --query 'Stacks[0].Outputs[?OutputKey==\`UserPoolClient\`].OutputValue' --output text` && sed -i -e "s/\${cognito-app-client-id}/$userclientid/g" src/config.js.template
+      - region=`aws cloudformation describe-stacks --stack-name $PROJECT-main  --query 'Stacks[0].Outputs[?OutputKey==\`Region\`].OutputValue' --output text` && sed -i -e "s/\${region}/$region/g" src/config.js.template
+      - bucket=`aws cloudformation describe-stacks --stack-name $PROJECT-main  --query 'Stacks[0].Outputs[?OutputKey==\`Bucket\`].OutputValue' --output text` && sed -i -e "s/\${s3-bucket}/$bucket/g" src/config.js.template
+      - mv src/config.js.template src/config.js
+      - npm run build
+  build:
+    commands:
+      # Public sample website
+      - aws s3 cp --recursive build s3://$WEBSITE_S3_BUCKET/public/

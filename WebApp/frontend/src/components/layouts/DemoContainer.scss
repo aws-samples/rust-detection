@@ -1,0 +1,12 @@
+.demo-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+}
+
+.demo-container__lightbg {
+  background-image: url('../../assets/light-bg.png');
+  background-position: right bottom;
+  background-repeat: no-repeat;
+}

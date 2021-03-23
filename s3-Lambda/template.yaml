@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: >-
+  Corrosion Detection - Wires S3 buckets as event source for Lambda functions
+Parameters:
+  NotificationBucketArn:
+    Type: String
+    Description: Arn of S3 bucket which is used for Lambda event notification
+  ImageInferenceUrl:
+    Type: String
+    Description: API Gateway URL 
+
+
+Resources:
+
+  TrainingImagesUploader:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: trainingupload-lambda.lambda_handler
+      Runtime: python3.6
+      CodeUri: .
+      Description: 'TrainingImagesUploader'
+      MemorySize: 512
+      Timeout: 300
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+  BatchInferenceLambda:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: BatchInference-lambda.lambda_handler
+      Runtime: python3.6
+      CodeUri: .
+      Description: 'BatchInferenceLambda'
+      MemorySize: 512
+      Timeout: 300
+      Environment:
+        Variables:
+          IMAGE_INFERENCE_URL: !Join ['', [!Ref ImageInferenceUrl, 'detect']] 
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+  LambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: s3Notification-app-lambda-exec-policy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                - 's3:*'
+                - 'cloudwatch:*'
+                - 'dynamodb:*'
+                - 'ssm:*'
+              Resource: '*'
+
+  LambdaInvokePermission1:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt TrainingImagesUploader.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn: !Sub '${NotificationBucketArn}'
+
+  LambdaInvokePermission2:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt BatchInferenceLambda.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn: !Sub '${NotificationBucketArn}'
+
+Outputs:
+  TrainingImagesUploaderArn:
+    Value: !GetAtt TrainingImagesUploader.Arn
+  TrainingImagesUploaderName:
+    Value: !Ref TrainingImagesUploader
+  BatchInferenceLambdaArn:
+    Value: !GetAtt BatchInferenceLambda.Arn
+  BatchInferenceLambdaName:
+    Value: !Ref BatchInferenceLambda

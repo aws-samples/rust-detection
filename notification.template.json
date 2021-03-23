@@ -1,0 +1,40 @@
+{
+  "LambdaFunctionConfigurations": [
+    {
+      "LambdaFunctionArn": "${BatchInferenceLambdaArn}",
+      "Events": ["s3:ObjectCreated:*"],
+      "Filter": {
+       "Key": {
+         "FilterRules": [
+           {
+             "Name": "prefix",
+             "Value": "public/inference/"
+           },
+           {
+             "Name": "suffix",
+             "Value": ".zip"
+           }
+         ]
+       }
+     }
+   },
+   {
+     "LambdaFunctionArn": "${TrainingImagesUploaderArn}",
+     "Events": ["s3:ObjectCreated:*"],
+     "Filter": {
+      "Key": {
+        "FilterRules": [
+          {
+            "Name": "prefix",
+            "Value": "public/training-images/"
+          },
+          {
+            "Name": "suffix",
+            "Value": ".zip"
+          }
+        ]
+      }
+    }
+   }
+  ]
+}

@@ -1,0 +1,21 @@
+.spd-carousel {
+  .carousel-item {
+    img {
+      // Height of the carousel is adjusted by the IMG tag inside
+      // Keep ratio of the image, but ensure that it has 100% width of the container
+      width: 100%;
+      height: auto;
+    }
+
+    .carousel-caption {
+      text-align: left;
+      width: 45%;
+    }
+  }
+
+  .carousel-indicators li {
+    border-radius: 12px;
+    width: 12px;
+    height: 12px;
+  }
+}

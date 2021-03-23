@@ -1,0 +1,385 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: 'Corrosion Detection - Deploys Website'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: A Bootstrap web site for projects
+
+  EmailAddress:
+    Type: String
+    Description: Email address of the admin
+
+  TrainingJobStateMachineArn:
+    Type: String
+    Description: Arn of the Training Job State Machine
+
+  EndpointCreationStateMachineArn:
+    Type: String
+    Description: Arn of the Endpoint Creation State Machine
+
+  TrainingAndEndpointJobStateMachineArn:
+    Type: String
+    Description: Arn of the Training and Endpoint creation State Machine
+
+  
+Resources:
+
+  ###############################################
+  ######### Web Site bucket #####################
+  ##############################################
+  WebSiteBucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub '${ProjectName}-frontend-site'
+      WebsiteConfiguration:
+        IndexDocument: 'index.html'
+        ErrorDocument: 'index.html'
+
+  WebSiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: WebSiteBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowOriginAccessIdentityToGetObj
+            Action: "s3:GetObject"
+            Effect: Allow
+            Resource:
+              - !Join ["", [!GetAtt WebSiteBucket.Arn, "/*"]]
+            Principal:
+              AWS:
+                - !Join ["", ["arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ", !Ref OriginAccessIdentity]]
+  
+  OriginAccessIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: "For accessing ApplicationBucket"
+
+
+  MachineLearningDatasetBucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Retain    
+    Properties:
+      BucketName: !Sub '${ProjectName}-ml-dataset'      
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - '*'
+            AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - DELETE
+              - HEAD
+            MaxAge: 3000
+
+  WebsiteCDN:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: CDN for S3-backed website
+        Origins:
+          - Id: s3-origin
+            DomainName: !GetAtt WebSiteBucket.DomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Join ["", ["origin-access-identity/cloudfront/", !Ref OriginAccessIdentity]]
+        Enabled: 'true'
+        DefaultCacheBehavior:
+          ForwardedValues:
+            QueryString: 'true'
+          TargetOriginId: s3-origin
+          ViewerProtocolPolicy: redirect-to-https
+          DefaultTTL: 0
+          MinTTL: 0
+          MaxTTL: 0
+        DefaultRootObject: index.html
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: 'true'
+        CustomErrorResponses:
+          - ErrorCachingMinTTL: 0
+            ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: '/index.html'
+
+  ImageBucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Retain    
+    Properties:
+      BucketName: !Sub '${ProjectName}-uploaded-images'      
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - '*'
+            AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - DELETE
+              - HEAD
+            MaxAge: 3000
+
+  ###############################################
+  ######### Cognito Pool #####################
+  ##############################################
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Ref ProjectName
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+        InviteMessageTemplate:
+          EmailMessage:
+            !Join [' ', ['You are invited to join', !Ref 'ProjectName', 'your username is {username} and temporary password is: {####}']]
+
+          EmailSubject:
+            !Join [' ', ['Your', !Ref 'ProjectName', 'account']]
+        UnusedAccountValidityDays: 7
+      AliasAttributes:
+        - 'email'
+      AutoVerifiedAttributes:
+        - 'email'
+      MfaConfiguration: 'OFF'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+
+  AdminUser:
+    Type: "AWS::Cognito::UserPoolUser"
+    Properties:
+      DesiredDeliveryMediums:
+        - EMAIL
+      UserAttributes:
+         - Name: email
+           Value: !Ref EmailAddress
+      Username: Admin
+      UserPoolId: !Ref UserPool
+
+  UserPoolClient:
+    Type: "AWS::Cognito::UserPoolClient"
+    Properties:
+      ClientName: web-client
+      GenerateSecret: false
+      ReadAttributes:
+        - email
+      RefreshTokenValidity: 1
+      UserPoolId: !Ref UserPool
+
+  IdentityPool:
+    Type: "AWS::Cognito::IdentityPool"
+    Properties:
+      AllowUnauthenticatedIdentities: True
+      CognitoIdentityProviders:
+        -
+          ClientId: !Ref UserPoolClient
+          ProviderName: !Join ['', [!Sub 'cognito-idp.${AWS::Region}.amazonaws.com/', !Ref 'UserPool']]
+
+  IdpAuthenticatedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ProjectName}-idp-au-role
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Federated:
+                 - cognito-identity.amazonaws.com
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref IdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: "authenticated"
+      Path: /
+      Policies:
+        - PolicyName: PipelinePolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:            
+              - Action:
+                  - cognito-identity:*
+                Effect: Allow
+                Resource:
+                  - !Join ['', ['arn:aws:cognito-identity:*:*:identitypool/', !Ref IdentityPool ]]
+              - Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Effect: Allow
+                Resource:
+                # NOTE: using !Ref ImageBucket will cause cyclical dependency. Wee need to use !Sub here
+                # See https://aws.amazon.com/premiumsupport/knowledge-center/unable-validate-circular-dependency-cloudformation/ for details
+                  - !Join ['', ['arn:aws:s3:::', !Sub '${ProjectName}-uploaded-images', '/public/*']]
+                  - !Join ['', ['arn:aws:s3:::', !Sub '${ProjectName}-uploaded-images', '/protected/${cognito-identity.amazonaws.com:sub}/*']]
+                  - !Join ['', ['arn:aws:s3:::', !Sub '${ProjectName}-uploaded-images', '/private/${cognito-identity.amazonaws.com:sub}/*']]
+              - Action:
+                  - s3:PutObject
+                Effect: Allow
+                Resource:
+                  - !Join ['', ['arn:aws:s3:::', !Sub '${ProjectName}-uploaded-images', '/uploads/*']]
+              - Action:
+                  - s3:GetObject
+                Effect: Allow
+                Resource:
+                  - !Join ['', ['arn:aws:s3:::', !Sub '${ProjectName}-uploaded-images', '/protected/*']]
+              - Action:
+                  - s3:ListBucket
+                Effect: Allow
+                Resource:
+                  - !Join ['', ['arn:aws:s3:::', !Sub '${ProjectName}-uploaded-images']]
+                Condition:
+                  StringLike:
+                    "s3:prefix":
+                      - "public/"
+                      - "public/*"
+                      - "protected/"
+                      - "protected/*"
+                      - "private/${cognito-identity.amazonaws.com:sub}/"
+                      - "private/${cognito-identity.amazonaws.com:sub}/*"
+              
+          
+                
+
+  IdpUnauthenticatedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-idp-un-role'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Federated:
+                - cognito-identity.amazonaws.com
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref IdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: "unauthenticated"
+      Path: /
+      Policies:
+        - PolicyName: PipelinePolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - s3:PutObject
+                Effect: Deny
+                Resource:
+                  - "*"
+
+  IdentityPoolRoleAttachment:
+    Type: "AWS::Cognito::IdentityPoolRoleAttachment"
+    Properties:
+      IdentityPoolId: !Ref IdentityPool
+      Roles:
+         { "authenticated":!GetAtt IdpAuthenticatedRole.Arn,
+          "unauthenticated":!GetAtt IdpUnauthenticatedRole.Arn
+         }
+  
+  NoOfImagesForTraining:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: NO_IMAGES_FOR_TRAINING
+      Type: String
+      Value: "0"
+
+  PrevSagemakerEndpoint:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: PREVIOUS_SAGEMAKER_SSD_ENDPOINT
+      Type: String
+      Value: "-"  
+
+  TrainingJobStateMachineArnParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: CORROSION_TRAINING_JOB_STATE_MACHINE_ARN
+      Type: String
+      Value: !Ref TrainingJobStateMachineArn
+      
+
+  EndpointCreationStateMachineArnParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: CORROSION_ENDPOINT_JOB_STATE_MACHINE_ARN
+      Type: String
+      Value: !Ref EndpointCreationStateMachineArn
+
+  TrainingAndEndpointJobStateMachineArnParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: MODEL_ENDPOINT_JOB_STATE_MACHINE_ARN
+      Type: String
+      Value: !Ref TrainingAndEndpointJobStateMachineArn
+
+  XgbEndpoint:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: XGB_ENDPOINT
+      Type: String
+      Value: "-" 
+
+  
+  CognitoUserPoolArnParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: COGNITO_USER_POOL_ARN
+      Type: String
+      Value: !GetAtt UserPool.Arn
+      
+  CognitoUserPoolNameParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: COGNITO_USER_POOL_NAME
+      Type: String
+      Value: !Ref ProjectName
+  
+  ImageBucketName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: CORROSION_IMAGE_S3_BUCKET
+      Type: String
+      Value: !Ref ImageBucket
+
+Outputs:
+  WebSiteBucket:
+    Value: !Ref WebSiteBucket
+  ImageBucket:
+    Value: !Ref ImageBucket
+  MachineLearningDatasetBucket:
+    Value: !Ref MachineLearningDatasetBucket
+  ImageBucketArn:
+    Value: !GetAtt ImageBucket.Arn
+  UserPoolClient:
+    Value: !Ref UserPoolClient
+  IdentityPool:
+    Value: !Ref IdentityPool
+  UserPool:
+    Value: !Ref UserPool
+  Region:
+    Value: !Ref AWS::Region
+  UserPoolArn:
+    Value: !GetAtt UserPool.Arn
+  UserPoolName:
+    Value: !Ref ProjectName 
+  CloudFrontUrl:
+    Value: !GetAtt WebsiteCDN.DomainName

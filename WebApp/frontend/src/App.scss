@@ -1,0 +1,7 @@
+/* 
+ * We need all top-level elements to have height 100% to ensure that
+ * footer is pushed to the bottom of the page
+ */
+html, body, #root {
+  height: 100%;
+}

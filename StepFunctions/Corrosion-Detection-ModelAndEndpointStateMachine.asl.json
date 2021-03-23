@@ -1,0 +1,116 @@
+{
+  "Comment": "Machine Learning Training and Model Hosting workflow",
+  "StartAt": "StartTrainingJob",
+  "Version": "1.0",
+  "States": {
+    "StartTrainingJob": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sagemaker:createTrainingJob.sync",
+      "Parameters":
+      {
+        "AlgorithmSpecification": {
+            "TrainingImage": "811284229777.dkr.ecr.us-east-1.amazonaws.com/xgboost:latest",
+            "TrainingInputMode": "File"
+        },
+        "HyperParameters": {
+            "max_depth.$" : "$.HyperParameters.max_depth",
+            "learning_rate.$" : "$.HyperParameters.learning_rate",
+            "eta.$" : "$.HyperParameters.eta",
+            "colsample_bytree.$" : "$.HyperParameters.colsample_bytree",
+            "gamma.$" : "$.HyperParameters.gamma",
+            "n_estimators.$" : "$.HyperParameters.n_estimators",
+            "min_child_weight.$": "$.HyperParameters.min_child_weight",
+            "num_class.$" : "$.HyperParameters.num_class",
+            "subsample.$" : "$.HyperParameters.subsample",
+            "num_round.$" : "$.HyperParameters.num_round",
+            "objective.$" : "$.HyperParameters.objective"
+        },
+        "InputDataConfig": [
+            {
+              "ChannelName": "train",
+              "CompressionType": "None",
+              "ContentType": "text/csv",
+              "DataSource": {
+                  "S3DataSource": {
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri.$": "$.InputTrainingS3Uri"
+                  }
+              },
+              "RecordWrapperType": "None"
+            },
+            {
+              "ChannelName": "validation",
+              "CompressionType": "None",
+              "ContentType": "text/csv",
+              "DataSource": {
+                  "S3DataSource": {
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri.$": "$.InputValidationS3Uri"
+                  }
+              },
+              "RecordWrapperType": "None"
+            }
+        ],
+        "OutputDataConfig": {
+            "S3OutputPath.$": "$.S3OutputPath"
+        },
+        "ResourceConfig": {
+            "InstanceCount.$": "$.InstanceCount",
+            "InstanceType.$": "$.InstanceType",
+            "VolumeSizeInGB": 30
+        },
+        "RoleArn": "arn:aws:iam::12345678900:role/corrosion-detection-stepfun-SageMakerExecutionRole-OTOBXBEX5D7E",
+        "StoppingCondition": {
+            "MaxRuntimeInSeconds.$": "$.MaxRuntimeInSeconds"
+        },
+        "TrainingJobName.$": "$.TrainingJobName"
+
+      },
+    "ResultPath": "$.Step1",
+    "Next": "CreateEndPoint"
+      
+    },
+    "CreateEndPoint": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:12345678900:function:corrosion-detection-stepf-ModelAndEndpointDeployHa-VSF1LEJ4224W",
+      "ResultPath": "$.endpointCreationResult",
+      "Next": "CheckEndPointStatus"
+    },
+  "CheckEndPointStatus": {
+    "Type": "Task",
+    "Resource": "arn:aws:lambda:us-east-1:12345678900:function:corrosion-detection-stepf-ModelAndEndpointCheckDep-AMVH8WZSKYWU",
+    "ResultPath": "$.endpointStatusResult",
+    "Next": "IsEndpointInService"
+  },
+  "IsEndpointInService": {
+    "Type": "Choice",
+    "Choices": [
+        {
+          "Not": {
+            "Variable": "$.endpointStatusResult.EndpointStatus",
+            "StringEquals": "InService"
+          },
+          "Next": "wait_sixty_seconds"
+        }
+    ],
+    "Default": "UpdateImagesForTraining"
+  },
+  "wait_sixty_seconds": {
+    "Type": "Wait",
+    "Seconds": 60,
+    "Next": "CheckEndPointStatus"
+  },
+  "UpdateImagesForTraining": {
+    "Type": "Task",
+    "Resource": "arn:aws:lambda:us-east-1:12345678900:function:corrosion-detection-stepf-ImagesForTrainingUpdator-XKTA2J846QJW",
+    "ResultPath": "$.ImagesForTrainingCounter",
+    "Next": "Done"
+  },
+  "Done": {
+        "Type": "Pass",
+        "End": true
+    }
+  }
+}

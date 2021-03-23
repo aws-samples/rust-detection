@@ -1,0 +1,60 @@
+.spd-footer {
+  display: flex;
+  flex: 0 0 auto;
+
+  /* Reverse shadow to the top */
+  -webkit-box-shadow: 0 -0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  -moz-box-shadow: 0 -0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  box-shadow: 0 -0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+
+  .spd-footer__legal {
+    align-self: center;
+  }
+
+  /**
+   In display:flex, we cannot use float:left or right.
+   Instead, we use a filler element (that can grow to fill the gap)
+   in the middle to push other elements to left/right
+  */
+  .spd-footer__filler {
+    flex-grow: 1;
+  }
+
+  .spd-footer__logo {
+    height: 34px;
+    width: 200px;
+
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center center;
+  }
+
+}
+
+/**
+  Theme: light
+*/
+.spd-footer.light {
+  background-color: #f8f9fa;
+
+  .spd-footer__legal {
+    color: rgba(0, 0, 0, .5);
+  }
+
+  .spd-footer__logo {
+    background-image: url('../assets/light-spd-logo.svg');
+  }
+}
+
+/**
+  Theme: dark
+*/
+.spd-footer.dark {
+  background-color: #232F3E;
+
+  .spd-footer__legal {
+    color: white;
+  }
+
+  
+}

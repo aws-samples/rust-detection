@@ -1,0 +1,18 @@
+.spd-header {
+  flex-shrink: 0;
+
+  /**
+   In display:flex, we cannot use float:left or right.
+   Instead, we use a filler element (that can grow to fill the gap)
+   in the middle to push other elements to left/right
+  */
+  .spd-header__filler {
+    flex-grow: 1;
+  }
+}
+
+
+
+
+
+

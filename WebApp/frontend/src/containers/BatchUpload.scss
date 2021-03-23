@@ -1,0 +1,51 @@
+table.table-batch tbody tr:hover {
+  background-color: #CCE7E7;
+}
+
+table.table-batch tbody {
+  height: 300px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+table.table-batch thead, .table-batch tbody, .table-batch tr, .table-batch td, .table-batch th {
+  display: block;
+}
+table.table-batch tbody td, .table-batch thead > tr> th {
+  float: left;
+  border-bottom-width: 0;
+}
+
+table.table-batch-details tbody {
+  height: 600px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+table.table-batch-details thead, .table-batch-details tbody, .table-batch-details tr, .table-batch-details td, .table-batch-details th {
+  display: block;
+}
+table.table-batch-details tbody td, .table-batch-details thead > tr> th {
+  float: left;
+  border-bottom-width: 0;
+}
+
+table.table-batch-details tbody td {
+  height: 100px;
+}
+
+img.uploaded-image {
+  max-width: 100%;
+  max-height: 100%;
+  cursor: pointer;
+}
+
+img.original-size-image {
+  max-width: 100%;
+  height: 400px;  
+}
+
+.modal-dialog.modal-90w{
+  max-width: 100%;  
+  max-width: 60%;
+}

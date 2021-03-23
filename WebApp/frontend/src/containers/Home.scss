@@ -1,0 +1,35 @@
+.home-link-text {
+  margin-left: 1rem;
+}
+
+img.uploaded-image {
+  width: 550px;
+  height: 550px;
+  cursor: pointer;
+}
+
+img.original-size-image {
+  max-width: 100%;
+  max-height: 100%;
+  width: 800px;
+  height: 600px;  
+}
+
+.modal-dialog.modal-90w{
+  max-width: 100%;  
+  max-width: 100%;
+}
+
+table.table-endpoints tbody {
+  height: 500px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+table.table-endpoints thead, .table-endpoints tbody, .table-endpoints tr, .table-endpoints td, .table-endpoints th {
+  display: block;
+}
+table.table-endpoints tbody td, .table-endpoints thead > tr> th {
+  float: left;
+  border-bottom-width: 0;
+}

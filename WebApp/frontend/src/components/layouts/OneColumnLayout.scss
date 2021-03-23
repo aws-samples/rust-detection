@@ -1,0 +1,10 @@
+.layout--fullpage {
+  /*
+      If the height of the content is small, the footer will be pulled up.
+      To ensure that the footer is always at the bottom of the page, we'll let the layout grow to fill
+      all the space.
+  */
+  flex-grow: 1;
+
+  margin-top: 1rem;
+}

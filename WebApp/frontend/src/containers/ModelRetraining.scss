@@ -1,0 +1,31 @@
+table.mlTable tbody tr:hover {
+  background-color: #CCE7E7;
+}
+
+table.table-endpoints tbody {
+  height: 500px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+table.table-endpoints thead, .table-endpoints tbody, .table-endpoints tr, .table-endpoints td, .table-endpoints th {
+  display: block;
+}
+table.table-endpoints tbody td, .table-endpoints thead > tr> th {
+  float: left;
+  border-bottom-width: 0;
+}
+
+table.table-trainingjob tbody {
+  height: 500px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+/* table.table-trainingjob thead, .table-trainingjob tbody, .table-trainingjob tr, .table-trainingjob td, .table-trainingjob th {
+  display: block;
+}
+table.table-trainingjob tbody td, .table-trainingjob thead > tr> th {
+  float: left;
+  border-bottom-width: 0;
+} */
